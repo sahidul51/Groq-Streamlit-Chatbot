@@ -14,7 +14,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Get Groq API key from Streamlit secrets first, then .env
+# Get Groq API Key
 try:
     GROQ_API_KEY = st.secrets["GROQ_API_KEY"]
 except Exception:
@@ -26,25 +26,11 @@ if not GROQ_API_KEY:
 
 os.environ["GROQ_API_KEY"] = GROQ_API_KEY
 
-# Optional LangSmith tracking
-LANGCHAIN_API_KEY = os.getenv("LANGCHAIN_API_KEY")
-
-if LANGCHAIN_API_KEY:
-    os.environ["LANGCHAIN_API_KEY"] = LANGCHAIN_API_KEY
-    os.environ["LANGCHAIN_TRACING_V2"] = "true"
-    os.environ["LANGCHAIN_PROJECT"] = "Simple Q&A Chatbot With Groq"
-
 # Prompt Template
 prompt = ChatPromptTemplate.from_messages(
     [
-        (
-            "system",
-            "You are a helpful assistant. Answer the user's question clearly and simply."
-        ),
-        (
-            "user",
-            "Question: {question}"
-        )
+        ("system", "You are a helpful assistant. Answer the user's question clearly and simply."),
+        ("user", "Question: {question}")
     ]
 )
 
@@ -52,14 +38,14 @@ def generate_response(question, model_name, temperature, max_tokens):
     llm = ChatGroq(
         model=model_name,
         temperature=temperature,
-        max_tokens=max_tokens,
+        max_tokens=max_tokens
     )
 
     output_parser = StrOutputParser()
     chain = prompt | llm | output_parser
 
-    answer = chain.invoke({"question": question})
-    return answer
+    return chain.invoke({"question": question})
+
 
 # UI
 st.title("Enhanced Q&A Chatbot With Groq")
@@ -69,7 +55,6 @@ model_name = st.sidebar.selectbox(
     [
         "llama-3.1-8b-instant",
         "llama-3.3-70b-versatile",
-        "mixtral-8x7b-32768",
         "gemma2-9b-it"
     ]
 )
@@ -88,21 +73,27 @@ max_tokens = st.sidebar.slider(
     value=300
 )
 
-st.write("Go ahead and ask any question.")
+st.write("Ask any question below:")
 
-user_input = st.text_input("You:")
+user_input = st.text_input("Enter your question:")
 
-if user_input:
-    with st.spinner("Generating response..."):
-        try:
-            response = generate_response(
-                user_input,
-                model_name,
-                temperature,
-                max_tokens
-            )
-            st.write(response)
-        except Exception as e:
-            st.error(f"Error: {e}")
-else:
-    st.info("Please provide the user input.")
+search_button = st.button("Search 🔍")
+
+if search_button:
+    if user_input.strip() == "":
+        st.warning("Please enter a question first.")
+    else:
+        with st.spinner("Searching..."):
+            try:
+                response = generate_response(
+                    user_input,
+                    model_name,
+                    temperature,
+                    max_tokens
+                )
+
+                st.subheader("Answer:")
+                st.write(response)
+
+            except Exception as e:
+                st.error(f"Error: {e}")
